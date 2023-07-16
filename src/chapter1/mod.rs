@@ -5,3 +5,4 @@ mod scoped_threads;
 mod shared_ownership_and_reference_counting;
 mod thread_in_rust;
 mod thread_safe_send_and_sync;
+mod waiting_parking_and_conditions_variables;
