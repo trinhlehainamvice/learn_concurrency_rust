@@ -86,8 +86,8 @@ mod tests {
         fn allocate_new_id() -> Option<u32> {
             static ID: AtomicU32 = AtomicU32::new(0);
             let id = ID.fetch_add(1, Relaxed);
-            const OVERFLOW: u32 = 10;
-            if id >= OVERFLOW {
+            const LIMIT: u32 = 10;
+            if id >= LIMIT {
                 ID.fetch_sub(1, Relaxed);
                 return None;
             }
@@ -117,13 +117,16 @@ mod tests {
         fn allocate_new_id() -> Option<u32> {
             static ID: AtomicU32 = AtomicU32::new(0);
             let id = ID.load(Relaxed);
-            const OVERFLOW: u32 = 10;
+            const LIMIT: u32 = 10;
             // (id + 1) might cause overflow
-            if (id + 1) > OVERFLOW {
+            if (id + 1) > LIMIT {
                 println!("Loaded ID: {id}");
                 return None;
             }
 
+            // According to Bard, we haven't checked value af atomic id after fetch_add
+            // So there is still a case if multiple thread load id that not overflow yet
+            // But cause overflow when numbers of threads add up to be overflow when fetch_add to current atomic id at the same time
             Some(ID.fetch_add(1, Relaxed))
         }
 
@@ -162,9 +165,9 @@ mod tests {
         fn allocate_new_id() -> Option<u32> {
             static ID: AtomicU32 = AtomicU32::new(0);
             let mut id = ID.load(Relaxed);
-            const OVERFLOW: u32 = 10;
+            const LIMIT: u32 = 10;
             loop {
-                if id >= OVERFLOW {
+                if id >= LIMIT {
                     println!("Loaded ID: {id}");
                     return None;
                 }
