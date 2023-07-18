@@ -130,12 +130,11 @@ mod tests {
 
         for i in 0..10 {
             thread::spawn(move || {
-                fence(Release);
                 let data = generate_data();
                 unsafe {
                     DATA[i] = data;
                 }
-                READY[i].store(true, Relaxed);
+                READY[i].store(true, Release);
             });
         }
 

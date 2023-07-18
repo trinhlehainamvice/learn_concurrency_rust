@@ -13,3 +13,39 @@ fn g(a: &mut i32, b: &mut i32) {
     *a += 2;
     *b += 1;
 }
+
+#[cfg(test)]
+mod tests {
+    use std::sync::atomic::AtomicBool;
+    use std::sync::atomic::Ordering::{Acquire, Relaxed, Release};
+    use std::thread;
+
+    #[test]
+    fn test() {
+        static LOCK: AtomicBool = AtomicBool::new(false);
+        static mut DATA: [u32; 10] = [0; 10];
+
+        thread::scope(|s| {
+            // Produce threads
+            for i in 0..10 {
+                s.spawn(move || {
+                    unsafe {
+                        DATA[i] = i as u32;
+                    }
+                    LOCK.store(false, Release);
+                });
+            }
+            // Consume threads
+            for i in 0..10 {
+                s.spawn(move || {
+                    if !LOCK.swap(true, Acquire) {
+                        println!("DATA is {}", unsafe { DATA[i] });
+                        assert_eq!(unsafe { DATA[i] }, i as u32);
+                    }
+                });
+            }
+        });
+
+        println!("Done");
+    }
+}
