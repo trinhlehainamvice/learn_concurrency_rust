@@ -16,8 +16,8 @@ fn g(a: &mut i32, b: &mut i32) {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::atomic::AtomicBool;
     use std::sync::atomic::Ordering::{Acquire, Relaxed, Release};
+    use std::sync::atomic::{AtomicBool, AtomicU32};
     use std::thread;
 
     #[test]
@@ -47,5 +47,25 @@ mod tests {
         });
 
         println!("Done");
+    }
+
+    #[test]
+    fn test2() {
+        static DATA: AtomicU32 = AtomicU32::new(0);
+        fn thread1() {
+            let mut data = DATA.load(Acquire);
+            data += 1;
+            DATA.store(data, Release);
+        }
+
+        fn thread2() {
+            let data = DATA.load(Acquire);
+            assert_eq!(data, 1);
+        }
+
+        thread::scope(|s| {
+            s.spawn(thread1);
+            s.spawn(thread2);
+        });
     }
 }
