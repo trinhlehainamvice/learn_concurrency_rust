@@ -87,7 +87,9 @@ impl<T> Drop for Arc<T> {
                 return;
             }
             fence(Acquire);
-            // Drop value and call destructor (aka drop)
+            // This not free memory of value, but instead call destructor (aka drop) of value
+            // Arc guarantees that the value will never be used again
+            // ArcInner will be dropped when all weak pointers are dropped
             ManuallyDrop::drop(&mut *self.ptr.as_ref().value.get());
             drop(Weak { ptr: self.ptr });
         }
