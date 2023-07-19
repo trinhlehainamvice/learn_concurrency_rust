@@ -1,12 +1,15 @@
-use std::cell::UnsafeCell;
+use std::cell::{RefCell, UnsafeCell};
 use std::marker::PhantomData;
 use std::mem::MaybeUninit;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::{Acquire, Relaxed, Release};
+use std::thread;
+use std::thread::Thread;
 
 struct Channel<T> {
     msg: UnsafeCell<MaybeUninit<T>>,
     ready: AtomicBool,
+    thread: RefCell<Option<Thread>>,
 }
 
 unsafe impl<T> Sync for Channel<T> {}
@@ -16,6 +19,7 @@ impl<T> Channel<T> {
         Channel {
             msg: UnsafeCell::new(MaybeUninit::uninit()),
             ready: AtomicBool::new(false),
+            thread: RefCell::new(None),
         }
     }
 
@@ -24,6 +28,7 @@ impl<T> Channel<T> {
     }
 
     pub fn as_receiver(&self) -> Receiver<T> {
+        *self.thread.borrow_mut() = Some(thread::current());
         Receiver {
             inner: self,
             _no_send: PhantomData,
@@ -51,6 +56,9 @@ impl<T> Sender<'_, T> {
     pub fn send(&self, msg: T) {
         unsafe {
             (*self.inner.msg.get()).write(msg);
+        }
+        if let Some(t) = self.inner.thread.borrow_mut().take() {
+            t.unpark();
         }
         self.inner.ready.store(true, Release);
     }
